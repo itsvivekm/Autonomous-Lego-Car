@@ -1,0 +1,163 @@
+# Include nios_macros.s to workaround a bug in the movia pseudo-instruction.
+.include "nios_macros.s"
+
+.equ JP1, 0x10000060
+.equ DIR, 0x07f557ff
+
+.global _start
+
+_start:
+	movia r8, JP1			# Copy address of JP1 into r8
+	movia r9, DIR			# Store direction register values
+	stwio r9, 4(r8)			# Initialise direction register
+	movia r15, 0xfffffbff	# Activate only sensor0 
+	stwio r15, 0(r8)	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	movia r7, 0xfffffbff
+	
+	
+check_sensor_0:
+	#movia r15, 0xfffffbff			# Activate only sensor0 
+	#stwio r15, 0(r8)		
+	ldwio r18, 0(r8)
+	and r18, r18, r7
+	stwio r18, 0(r8) 
+	
+	ldwio r10, 0(r8)
+	srli r10, r10, 11				# get the ready bit to the right
+	andi r10, r10, 0x1				# extract the ready bit
+	
+	bne r10, r0, check_sensor_0		# if sensor is not ready yet, then repeat the above 2 steps
+	
+	ldwio r11, 0(r8)
+	srli r11, r11, 27				# move 27 bits to the right
+	andi r11, r11, 0x0F				# extract sensor values (bits 27..30)
+
+sensor_comparison:
+	#beq r11, r12, stop_motor
+	#bgt r11, r12, move_motor1_forward		# any imbalances should be resolved by moving motor in appropriate direction
+	#blt r11, r12, move_motor1_backward 
+	
+	movi r9,11
+	bge r11, r9, move_motor12_forward
+
+	br turn_right
+	#br move_motor12_forward
+
+
+turn_left:
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	call timer
+	movia r14, 0xfffffff8
+	stwio r14, 0(r8)
+	call timer
+	br check_sensor_0
+	
+	
+turn_right:
+	movia r14, 0xfffffff2
+	stwio r14, 0(r8)
+	br check_sensor_0
+	
+	
+move_motor1_forward:	
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	call timer
+	movia r14, 0xfffffffe
+	stwio r14, 0(r8)
+	call timer
+	br check_sensor_0
+	
+	
+move_motor2_forward:	
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	call timer
+	movia r14, 0xfffffffb
+	stwio r14, 0(r8)
+	call timer
+	br check_sensor_0
+	
+move_motor12_forward:	
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	call timer
+	call timer
+	movia r14, 0xfffffffa
+	stwio r14, 0(r8)
+	call timer
+	
+	br check_sensor_0
+	
+	
+move_motor1_backward:
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	call timer
+	movia r14, 0xfffffffc
+	stwio r14, 0(r8)
+	call timer
+	br check_sensor_0
+	
+
+move_motor2_backward:
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	call timer
+	movia r14, 0xfffffff3
+	stwio r14, 0(r8)
+	call timer
+	br check_sensor_0
+	
+
+move_motor12_backward:
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	call timer
+	movia r14, 0xfffffff0
+	stwio r14, 0(r8)
+	call timer
+	br check_sensor_0
+	
+
+
+stop_motor:
+	movia r15, 0xfffffbff			# Activate only sensor0 
+	stwio r15, 0(r8)
+	br check_sensor_0
+#count_loop:
+	#subi r9, r9, 1
+	#bne r9,r0,count_loop
+	#br check_sensor_0
+
+	timer:
+	movia r6, 0x10002000                   	 /* r7 contains the base address for the timer */
+   	movui r2, r4
+   	stwio r2, 8(r6)                          /* Set the period to be 50000 clock cycles */
+   	movui r2, r5
+   	stwio r2, 12(r6)
+
+   	movui r2, 4
+   	stwio r2, 4(r6)                          /* Start the timer without continuing or interrupts */
+
+
+timer_read:
+	
+  	stwio r0,16(r6)             	/* Tell Timer to take a snapshot of the timer */
+   	ldwio r3,16(r6)             	/* Read snapshot bits 0..15 */
+   	ldwio r13,20(r6)             	/* Read snapshot bits 16...31 */
+   	slli  r13,r13,16			/* Shift left logically */
+   	or    r13,r13,r3               	/* Combine bits 0..15 and 16...31 into one register */
+
+	ldwio r16, 0(r6)
+	srli r16, r16, 1
+	andi r16, r16, 0x1
+	
+	bne r16, r0, timer_read 
+	
+ret
+
+	
