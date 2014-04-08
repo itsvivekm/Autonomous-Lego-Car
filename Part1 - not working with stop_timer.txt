@@ -1,0 +1,231 @@
+# Include nios_macros.s to workaround a bug in the movia pseudo-instruction.
+.include "nios_macros.s"
+
+.equ JP1, 0x10000060
+.equ DIR, 0x07f557ff
+
+.global _start
+
+_start:
+	movia r8, JP1			# Copy address of JP1 into r8
+	movia r9, DIR			# Store direction register values
+	stwio r9, 4(r8)			# Initialise direction register
+	movia r15, 0xfffffbff	# Activate only sensor0 
+	stwio r15, 0(r8)	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	movia r7, 0xfffffbff
+	
+	
+check_sensor_0:
+	#movia r15, 0xfffffbff			# Activate only sensor0 
+	#stwio r15, 0(r8)		
+	ldwio r18, 0(r8)
+	and r18, r18, r7
+	stwio r18, 0(r8) 
+	
+	ldwio r10, 0(r8)
+	srli r10, r10, 11				# get the ready bit to the right
+	andi r10, r10, 0x1				# extract the ready bit
+	
+	bne r10, r0, check_sensor_0		# if sensor is not ready yet, then repeat the above 2 steps
+	
+	ldwio r11, 0(r8)
+	srli r11, r11, 27				# move 27 bits to the right
+	andi r11, r11, 0x0F				# extract sensor values (bits 27..30)
+
+sensor_comparison:
+	#beq r11, r12, stop_motor
+	#bgt r11, r12, move_motor1_forward		# any imbalances should be resolved by moving motor in appropriate direction
+	#blt r11, r12, move_motor1_backward 
+	
+	movi r9,11
+	bge r11, r9, move_motor12_forward
+
+	movi r4, 1000
+	subi sp, sp, 4
+	stw ra, 0(sp)
+	br stop_timer
+ret_here:
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+		
+	br stop_motor
+	#br turn_right
+	#br move_motor12_forward
+
+
+turn_left:
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	call polling_timer
+	
+	movia r14, 0xfffffff8
+	stwio r14, 0(r8)
+	call polling_timer
+	br check_sensor_0
+	
+	
+turn_right:
+	movia r14, 0xfffffff2
+	stwio r14, 0(r8)
+	br check_sensor_0
+	
+	
+move_motor1_forward:	
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	call polling_timer
+	
+	movia r14, 0xfffffffe
+	stwio r14, 0(r8)
+	call polling_timer
+	br check_sensor_0
+	
+	
+move_motor2_forward:	
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	call polling_timer
+	
+	movia r14, 0xfffffffb
+	stwio r14, 0(r8)
+	call polling_timer
+	br check_sensor_0
+	
+move_motor12_forward:	
+	
+	
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	call polling_timer
+	call polling_timer
+	
+	movia r14, 0xfffffffa
+	stwio r14, 0(r8)
+	call polling_timer
+	
+	br check_sensor_0
+	
+	
+move_motor1_backward:
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	call polling_timer
+	movia r14, 0xfffffffc
+	stwio r14, 0(r8)
+	call polling_timer
+	br check_sensor_0
+	
+
+move_motor2_backward:
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	call polling_timer
+	movia r14, 0xfffffff3
+	stwio r14, 0(r8)
+	call polling_timer
+	br check_sensor_0
+	
+
+move_motor12_backward:
+	movui r4, %lo(125000)
+	movui r5, %hi(125000)
+	
+	
+	movia r14, 0xffffffff
+	stwio r14, 0(r8)
+	
+	subi sp, sp, 4
+	stw ra, 0(sp)
+	call polling_timer
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+	
+	
+	movia r14, 0xfffffff0
+	stwio r14, 0(r8)
+	
+	subi sp, sp, 4
+	stw ra, 0(sp)
+	call polling_timer
+	ldw ra, 0(sp)
+	addi sp, sp, 4
+	
+	ret
+	
+stop_motor:
+	movia r15, 0xfffffbff			# Activate only sensor0 
+	stwio r15, 0(r8)
+	br stop_motor
+	#br check_sensor_0
+#count_loop:
+	#subi r9, r9, 1
+	#bne r9,r0,count_loop
+	#br check_sensor_0
+
+polling_timer:
+	movia r6, 0x10002000                   	 /* r7 contains the base address for the polling_timer */
+   	mov r2, r4
+   	stwio r2, 8(r6)                          /* Set the period to be 50000 clock cycles */
+   	mov r2, r5
+   	stwio r2, 12(r6)
+
+   	movui r2, 4
+   	stwio r2, 4(r6)                          /* Start the polling_timer without continuing or interrupts */
+
+
+polling_timer_read:
+	
+  	stwio r0,16(r6)             	/* Tell polling_timer to take a snapshot of the polling_timer */
+   	ldwio r3,16(r6)             	/* Read snapshot bits 0..15 */
+   	ldwio r13,20(r6)             	/* Read snapshot bits 16...31 */
+   	slli  r13,r13,16			/* Shift left logically */
+   	or    r13,r13,r3               	/* Combine bits 0..15 and 16...31 into one register */
+
+	ldwio r16, 0(r6)
+	srli r16, r16, 1
+	andi r16, r16, 0x1
+	
+	bne r16, r0, polling_timer_read 
+	
+ret
+
+
+stop_timer:
+	subi sp, sp, 8
+	stw r7, 0(sp)
+
+	movi r7, 10000
+	
+iterate_calls:
+	stw ra, 4(sp)
+	call move_motor12_backward
+	ldw ra, 4(sp)
+	subi r7, r7, 1
+	#bne r7, r0, iterate_calls
+	#br stop_motor
+	
+	ldw r7, 0(sp)
+	addi sp, sp, 8
+br ret_here
+
+	
