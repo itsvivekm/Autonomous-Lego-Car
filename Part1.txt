@@ -42,19 +42,26 @@ check_sensor_0:
 
 sensor_comparison:
 
-	movi r9,10
-	bge r11, r9, move_motor12_forward
+	movi r9, 11						#Threshold for light
+	movi r20, 2						#Threshold for direction
+	movi r19, 1						#Forward id
+	bge r11, r9, reset_counter_to_move_forward
 	
+change_direction:
+	addi r21, r21, 1
+	blt r21, r20, move_motor12_forward
+	
+	mov r21, r0
 	movi r23, 4
 	
-time_stop:
+time_stop_1:
 	movia r15, 0xffffffff			# Activate only sensor0 
 	stwio r15, 0(r8)
-stop_for_sec:
+stop_for_sec_1:
 	subi r23, r23, 1
 	call timer
 	call timer
-	bne r23, r0, stop_for_sec
+	bne r23, r0, stop_for_sec_1
 
 	
 	movi r23, 20
@@ -68,23 +75,176 @@ backward_for_sec:
 	bne r23, r0, time_backward
 
 
-	movi r23, 35
+
+	movi r23, 4
 	
-time_right:
-	br turn_right
-right_for_sec:
+time_stop_2:
+	movia r15, 0xffffffff			# Activate only sensor0 
+	stwio r15, 0(r8)
+stop_for_sec_2:
 	subi r23, r23, 1
 	call timer
 	call timer
-	bne r23, r0, time_right
+	bne r23, r0, stop_for_sec_2
+
+
+	movi r23, 37
+	
+time_right_1:
+	movi r19, 1
+	br turn_right
+right_1_for_sec:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, time_right_1
+
+
+	movi r23, 4
+	
+time_stop_3:
+	movia r15, 0xffffffff			# Activate only sensor0 
+	stwio r15, 0(r8)
+stop_for_sec_3:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, stop_for_sec_3
 
 	
-	br check_sensor_0	
+	
+	movi r23, 20
+	
+time_forward_1:
+	movi r19, 2
+	br move_motor12_forward
+forward_1_for_sec:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, time_forward_1
+
+	
+
+	movi r23, 4
+	
+time_stop_4:
+	movia r15, 0xffffffff			# Activate only sensor0 
+	stwio r15, 0(r8)
+stop_for_sec_4:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, stop_for_sec_4
+
+		
+	movi r23, 45
+	
+time_left:
+	movi r19, 1
+	br turn_left
+left_for_sec:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, time_left
+
+	
+
+	movi r23, 4
+	
+time_stop_5:
+	movia r15, 0xffffffff			# Activate only sensor0 
+	stwio r15, 0(r8)
+stop_for_sec_5:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, stop_for_sec_5
+
+		
+	movi r23, 35
+	
+time_forward_2:
+	movi r19, 3
+	br move_motor12_forward
+forward_2_for_sec:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, time_forward_2
+
+
+	movi r23, 4
+	
+time_stop_6:
+	movia r15, 0xffffffff			# Activate only sensor0 
+	stwio r15, 0(r8)
+stop_for_sec_6:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, stop_for_sec_6
+
+	
+	movi r23, 58
+	
+time_left_2:
+	movi r19, 2
+	br turn_left
+left_2_for_sec:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, time_left_2
+	
+
+	movi r23, 4
+	
+time_stop_7:
+	movia r15, 0xffffffff			# Activate only sensor0 
+	stwio r15, 0(r8)
+stop_for_sec_7:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, stop_for_sec_7
+
+
+	movi r23, 45
+	
+time_right_2:
+	movi r19, 2
+	br turn_right
+right_2_for_sec:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, time_right_2
+	
+
+	movi r23, 4
+	
+time_stop_8:
+	movia r15, 0xffffffff			# Activate only sensor0 
+	stwio r15, 0(r8)
+stop_for_sec_8:
+	subi r23, r23, 1
+	call timer
+	call timer
+	bne r23, r0, stop_for_sec_8
+
+	
+	br stop_motor
+	#br check_sensor_0	
 	
 	#br move_motor12_backward
 	#br move_motor12_forward
 
-
+reset_counter_to_move_forward:
+	mov r21, r0
+	br move_motor12_forward
+	
 turn_left:
 	movia r14, 0xffffffff
 	stwio r14, 0(r8)
@@ -92,9 +252,13 @@ turn_left:
 	movia r14, 0xfffffff8
 	stwio r14, 0(r8)
 	call timer
-	br right_for_sec
+	movi r17, 1
+	beq r19, r17, left_for_sec
+	movi r17, 2
+	beq r19, r17, left_2_for_sec
 
-
+	br check_sensor_0
+	
 turn_right:
 	movia r14, 0xffffffff
 	stwio r14, 0(r8)
@@ -102,7 +266,10 @@ turn_right:
 	movia r14, 0xfffffff2
 	stwio r14, 0(r8)
 	call timer
-	br right_for_sec
+	movi r17, 1
+	beq r19, r17, right_1_for_sec
+	movi r17, 2
+	beq r19, r17, right_2_for_sec
 
 
 move_motor1_forward:	
@@ -132,8 +299,13 @@ move_motor12_forward:
 	movia r14, 0xfffffffa
 	stwio r14, 0(r8)
 	call timer
+	movi r17, 1
+	beq r19, r17, check_sensor_0
+	movi r17, 2
+	beq r19, r17, forward_1_for_sec
+	movi r17, 3
+	beq r19, r17, forward_2_for_sec
 	
-	br check_sensor_0
 
 
 move_motor1_backward:
@@ -172,7 +344,8 @@ move_motor12_backward:
 stop_motor:
 	movia r15, 0xfffffbff			# Activate only sensor0 
 	stwio r15, 0(r8)
-	br check_sensor_0
+	br stop_motor
+	#br check_sensor_0
 #count_loop:
 	#subi r9, r9, 1
 	#bne r9,r0,count_loop
